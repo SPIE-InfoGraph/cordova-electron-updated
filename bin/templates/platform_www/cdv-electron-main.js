@@ -37,8 +37,8 @@ const devTools = cdvElectronSettings.browserWindow.webPreferences.devTools
 
 const scheme = cdvElectronSettings.scheme;
 const hostname = cdvElectronSettings.hostname;
+const deepLink = cdvElectronSettings.deepLink;
 const isFileProtocol = scheme === 'file';
-
 /**
  * The base url path.
  * E.g:
@@ -59,6 +59,33 @@ if (!isFileProtocol) {
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
+if (deepLink?.scheme) {
+    if (process.defaultApp) {
+        if (process.argv.length >= 2) {
+            app.setAsDefaultProtocolClient(deepLink.scheme, process.execPath, [
+                path.resolve(process.argv[1])
+            ]);
+        }
+    } else {
+        app.setAsDefaultProtocolClient(deepLink.scheme);
+    }
+
+    const gotTheLock = app.requestSingleInstanceLock();
+
+    if (!gotTheLock) {
+        app.quit();
+    } else {
+        app.on('second-instance', (event, commandLine, workingDirectory) => {
+            // Someone tried to run a second instance, we should focus our window.
+            if (mainWindow) {
+                if (mainWindow.isMinimized()) mainWindow.restore();
+                mainWindow.focus();
+                const url = commandLine.pop();
+                mainWindow.webContents.executeJavaScript(`if(handleOpenURL)handleOpenURL("${url}");`);
+            }
+        });
+    }
+}
 
 function createWindow () {
     // Create the browser window.
@@ -76,7 +103,7 @@ function createWindow () {
     browserWindowOpts.webPreferences.contextIsolation = true;
 
     mainWindow = new BrowserWindow(browserWindowOpts);
-
+    mainWindow.setMenuBarVisibility(false);
     // Load a local HTML file or a remote URL.
     const cdvUrl = cdvElectronSettings.browserWindowInstance.loadURL.url;
     const loadUrl = cdvUrl.includes('://') ? cdvUrl : `${basePath}/${cdvUrl}`;
@@ -86,7 +113,9 @@ function createWindow () {
 
     // Open the DevTools.
     if (cdvElectronSettings.browserWindow.webPreferences.devTools) {
-        mainWindow.webContents.openDevTools();
+        if (cdvElectronSettings.browserWindow.webPreferences.showDevTools) {
+            mainWindow.webContents.openDevTools();
+        }
     }
 
     // Emitted when the window is closed.
@@ -132,6 +161,10 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
     }
+});
+
+app.on('browser-window-created', (e, win) => {
+    win.setMenuBarVisibility(false);
 });
 
 app.on('activate', () => {

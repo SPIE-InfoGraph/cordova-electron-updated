@@ -6,5 +6,8 @@
             "nodeIntegration": false
         },
         "width": 800
+    },
+    "deepLink":{
+           "scheme": "your-protocol"
     }
 }

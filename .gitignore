@@ -19,3 +19,4 @@ node_modules
 
 # Built files during packaging
 bin/templates/platform_www/cordova.js
+package-lock.json
