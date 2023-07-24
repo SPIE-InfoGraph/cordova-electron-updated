@@ -25,7 +25,8 @@ const {
     app,
     BrowserWindow,
     protocol,
-    ipcMain
+    ipcMain,
+	session 
 } = require('electron');
 // Electron settings from .json file.
 const cdvElectronSettings = require('./cdv-electron-settings.json');
@@ -103,7 +104,7 @@ function createWindow () {
     browserWindowOpts.webPreferences.contextIsolation = true;
 
     mainWindow = new BrowserWindow(browserWindowOpts);
-    mainWindow.setMenuBarVisibility(false);
+
     // Load a local HTML file or a remote URL.
     const cdvUrl = cdvElectronSettings.browserWindowInstance.loadURL.url;
     const loadUrl = cdvUrl.includes('://') ? cdvUrl : `${basePath}/${cdvUrl}`;
@@ -151,6 +152,22 @@ app.on('ready', () => {
             .catch((err) => console.log('An error occurred: ', err));
     }
 
+	session.defaultSession.webRequest.onHeadersReceived({ urls: ['http://*/*'] }, (details, callback) => {
+		
+		if ( details.responseHeaders['Set-Cookie']){
+			const cookies=details.responseHeaders['Set-Cookie'].map((d)=>d.split(';')[0].split("=")).map((d) => { return{ url: new URL(details.url).origin, name: d[0], value: d[1] }})
+
+			cookies.map((cookie)=>{
+				cookie.sameSite ="no_restriction";
+				cookie.secure =true;
+				session.defaultSession.cookies.set(cookie);})
+		}
+        callback({ cancel: false });
+       
+    });
+	
+	
+
     createWindow();
 });
 
@@ -164,7 +181,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('browser-window-created', (e, win) => {
-    win.setMenuBarVisibility(false);
+    win.setMenuBarVisibility(false)
 });
 
 app.on('activate', () => {
