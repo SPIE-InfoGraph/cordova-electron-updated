@@ -165,8 +165,26 @@ app.on('ready', () => {
         callback({ cancel: false });
        
     });
-	
-	
+    session.defaultSession.webRequest.onHeadersReceived({ urls: ['https://*/*'] }, (details, callback) => {
+        const cookies = details.responseHeaders['Set-Cookie'];
+        if(cookies) {
+            debugger
+            const newCookie = Array.from(cookies)
+				.map(cookie => {
+					if ( cookie.indexOf("Secure") ===-1)
+						return cookie.concat('; SameSite=None; Secure')
+					else
+						return cookie;
+					});
+            details.responseHeaders['Set-Cookie'] = [...newCookie];
+            callback({
+                responseHeaders: details.responseHeaders,
+            });
+        } else {
+            callback({ cancel: false });
+        }
+    });
+
 
     createWindow();
 });
