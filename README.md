@@ -36,7 +36,7 @@
 $ npm install -g cordova@latest
 $ cordova create helloworld
 $ cd helloworld
-$ cordova platform add electron
+$ cordova platform add https://github.com/SPIE-InfoGraph/cordova-electron-updated
 $ cordova run electron
 ```
 
