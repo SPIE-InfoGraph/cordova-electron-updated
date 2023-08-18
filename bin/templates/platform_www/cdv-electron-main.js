@@ -29,7 +29,8 @@ const {
 	session 
 } = require('electron');
 // Electron settings from .json file.
-const cdvElectronSettings = require('./cdv-electron-settings.json');
+global.cdvElectronSettings = require('./cdv-electron-settings.json');
+
 const reservedScheme = require('./cdv-reserved-scheme.json');
 
 const devTools = cdvElectronSettings.browserWindow.webPreferences.devTools
