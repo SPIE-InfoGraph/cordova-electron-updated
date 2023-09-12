@@ -153,38 +153,55 @@ app.on('ready', () => {
             .catch((err) => console.log('An error occurred: ', err));
     }
 
-	session.defaultSession.webRequest.onHeadersReceived({ urls: ['http://*/*'] }, (details, callback) => {
-		
-		if ( details.responseHeaders['Set-Cookie']){
-			const cookies=details.responseHeaders['Set-Cookie'].map((d)=>d.split(';')[0].split("=")).map((d) => { return{ url: new URL(details.url).origin, name: d[0], value: d[1] }})
+	session.defaultSession.webRequest.onBeforeSendHeaders( async (details, callback) => {
+        if (!details.url.startsWith("http://") || details.requestHeaders["Cookie"] ){
+             callback({cancel: false});
+             return;
+        }
+		const cookies = (await details.webContents.session.cookies.get({url:details.url})).map((cookie)=>{return `${cookie.name}=${cookie.value}; `}).reduce((accumulator, currentValue) => accumulator + currentValue, "");
+		if(cookies)
+            details.requestHeaders["Cookie"] = cookies;
+		callback({cancel: false, requestHeaders: details.requestHeaders});
+	});
+	session.defaultSession.webRequest.onHeadersReceived( (details, callback) => {
+        if ( details.url.startsWith("https://")){
+            let nameSetCookie = 'Set-Cookie'
+            if (details.responseHeaders['set-cookie']){
+                nameSetCookie = 'set-cookie';
+            }
 
-			cookies.map((cookie)=>{
-				cookie.sameSite ="no_restriction";
-				cookie.secure =true;
-				session.defaultSession.cookies.set(cookie);})
-		}
-        callback({ cancel: false });
-       
-    });
-    session.defaultSession.webRequest.onHeadersReceived({ urls: ['https://*/*'] }, (details, callback) => {
-        const cookies = details.responseHeaders['Set-Cookie'];
-        if(cookies) {
-            debugger
-            const newCookie = Array.from(cookies)
-				.map(cookie => {
-					if ( cookie.indexOf("Secure") ===-1)
-						return cookie.concat('; SameSite=None; Secure')
-					else
-						return cookie;
-					});
-            details.responseHeaders['Set-Cookie'] = [...newCookie];
-            callback({
-                responseHeaders: details.responseHeaders,
-            });
-        } else {
+            const cookies = details.responseHeaders[nameSetCookie];
+            if(cookies) {
+                const newCookie = Array.from(cookies)
+                    .map(cookie => {
+                        if ( cookie.indexOf("Secure") ===-1)
+                            return cookie.concat('; SameSite=None; Secure')
+                        else
+                            return cookie;
+                        });
+                details.responseHeaders[nameSetCookie] = [...newCookie];
+                callback({
+                    responseHeaders: details.responseHeaders,
+                });
+            } else {
+                callback({ cancel: false });
+            }
+        }else if ( details.url.startsWith("http://")){
+            if ( details.responseHeaders[nameSetCookie]){
+                const cookies=details.responseHeaders[nameSetCookie].map((d)=>d.split(';')[0].split("=")).map((d) => { return{ url: new URL(details.url).origin, name: d[0], value: d[1] }})
+                cookies.map((cookie)=>{
+                        details.webContents.session.cookies.set(cookie)
+                        session.defaultSession.cookies.set(cookie);
+                    })
+            }
+            callback({ cancel: false });
+
+        }
+        else{
             callback({ cancel: false });
         }
     });
+
 
 
     createWindow();
