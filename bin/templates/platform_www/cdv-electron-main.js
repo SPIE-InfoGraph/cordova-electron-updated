@@ -19,6 +19,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const dns = require('node:dns');
 const { cordova } = require('./package.json');
 // Module to control application life, browser window and tray.
 const {
@@ -28,6 +29,7 @@ const {
     ipcMain,
 	session 
 } = require('electron');
+dns.setDefaultResultOrder('verbatim');
 // Electron settings from .json file.
 global.cdvElectronSettings = require('./cdv-electron-settings.json');
 
@@ -83,22 +85,23 @@ if (deepLink?.scheme) {
                 if (mainWindow.isMinimized()) mainWindow.restore();
                 mainWindow.focus();
                 const url = commandLine.pop();
-                mainWindow.webContents.executeJavaScript(`if(handleOpenURL)handleOpenURL("${url}");`);
+                mainWindow.webContents.executeJavaScript(`if(handleOpenURL)handleOpenURL(\`${url}\`);`);
             }
         });
     }
 }
 
+let appIcon;
+if (fs.existsSync(path.join(__dirname, 'img/app.png'))) {
+    appIcon = path.join(__dirname, 'img/app.png');
+} else if (fs.existsSync(path.join(__dirname, 'img/icon.png'))) {
+    appIcon = path.join(__dirname, 'img/icon.png');
+} else {
+    appIcon = path.join(__dirname, 'img/logo.png');
+}
+
 function createWindow () {
     // Create the browser window.
-    let appIcon;
-    if (fs.existsSync(path.join(__dirname, 'img/app.png'))) {
-        appIcon = path.join(__dirname, 'img/app.png');
-    } else if (fs.existsSync(path.join(__dirname, 'img/icon.png'))) {
-        appIcon = path.join(__dirname, 'img/icon.png');
-    } else {
-        appIcon = path.join(__dirname, 'img/logo.png');
-    }
 
     const browserWindowOpts = Object.assign({}, cdvElectronSettings.browserWindow, { icon: appIcon });
     browserWindowOpts.webPreferences.preload = path.join(app.getAppPath(), 'cdv-electron-preload.js');
@@ -158,17 +161,17 @@ app.on('ready', () => {
              callback({cancel: false});
              return;
         }
-		const cookies = (await details.webContents.session.cookies.get({url:details.url})).map((cookie)=>{return `${cookie.name}=${cookie.value}; `}).reduce((accumulator, currentValue) => accumulator + currentValue, "");
-		if(cookies)
+		const cookies = (await session.defaultSession.cookies.get({url:details.url})).map((cookie)=>{return `${cookie.name}=${cookie.value}; `}).reduce((accumulator, currentValue) => accumulator + currentValue, "");
+        if(cookies)
             details.requestHeaders["Cookie"] = cookies;
 		callback({cancel: false, requestHeaders: details.requestHeaders});
 	});
 	session.defaultSession.webRequest.onHeadersReceived( (details, callback) => {
+        let nameSetCookie = 'Set-Cookie'
+        if (details.responseHeaders['set-cookie']){
+            nameSetCookie = 'set-cookie';
+        }
         if ( details.url.startsWith("https://")){
-            let nameSetCookie = 'Set-Cookie'
-            if (details.responseHeaders['set-cookie']){
-                nameSetCookie = 'set-cookie';
-            }
 
             const cookies = details.responseHeaders[nameSetCookie];
             if(cookies) {
@@ -188,11 +191,18 @@ app.on('ready', () => {
             }
         }else if ( details.url.startsWith("http://")){
             if ( details.responseHeaders[nameSetCookie]){
-                const cookies=details.responseHeaders[nameSetCookie].map((d)=>d.split(';')[0].split("=")).map((d) => { return{ url: new URL(details.url).origin, name: d[0], value: d[1] }})
-                cookies.map((cookie)=>{
-                        details.webContents.session.cookies.set(cookie)
-                        session.defaultSession.cookies.set(cookie);
-                    })
+                const cookies = details.responseHeaders[nameSetCookie].map((d)=>d.split(';'))
+                const cookiesForSave= cookies.map((d)=>  {
+                    const maxAge= d.find((d)=> d.indexOf('Max-Age') !==-1 || d.indexOf('max-age') !==-1 )?.split('=');
+                    const nameValue =  d[0].split('=')
+                    const returnOb ={ url: new URL(details.url).origin, name: nameValue[0], value: nameValue[1]}
+                    if (maxAge && maxAge.length >1)
+                       returnOb.expirationDate = maxAge[1] *1000 + Date.now();
+                    return returnOb;
+                });
+             cookiesForSave.map((cookie)=>{
+                session.defaultSession.cookies.set(cookie);
+             })
             }
             callback({ cancel: false });
 
@@ -218,6 +228,7 @@ app.on('window-all-closed', () => {
 
 app.on('browser-window-created', (e, win) => {
     win.setMenuBarVisibility(false)
+    win.setIcon(appIcon);
 });
 
 app.on('activate', () => {
