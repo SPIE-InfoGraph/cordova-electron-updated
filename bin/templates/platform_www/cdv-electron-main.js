@@ -27,7 +27,8 @@ const {
     BrowserWindow,
     protocol,
     ipcMain,
-	session 
+	session ,
+    screen
 } = require('electron');
 dns.setDefaultResultOrder('verbatim');
 // Electron settings from .json file.
@@ -100,14 +101,38 @@ if (fs.existsSync(path.join(__dirname, 'img/app.png'))) {
     appIcon = path.join(__dirname, 'img/logo.png');
 }
 
-function createWindow () {
+async function createWindow () {
     // Create the browser window.
 
     const browserWindowOpts = Object.assign({}, cdvElectronSettings.browserWindow, { icon: appIcon });
     browserWindowOpts.webPreferences.preload = path.join(app.getAppPath(), 'cdv-electron-preload.js');
     browserWindowOpts.webPreferences.contextIsolation = true;
+    var sizeOLDA;
+    var postionOLDA;
+    try {
+        const postionOLD = JSON.parse(await fs.promises.readFile( path.join(app.getPath('userData') ,"positionMainWindow.json") )) ;
+        const sizeOLD =  JSON.parse( await fs.promises.readFile(path.join(app.getPath('userData') ,"sizeMainWindow.json")) );
+        
+        const displays = screen.getDisplayMatching({x:postionOLD[0],y: postionOLD[1], width : sizeOLD[0], height : sizeOLD[1]})
+        if (( displays.workArea.x<=postionOLD[0] && displays.workArea.width>=postionOLD[0])){
+            browserWindowOpts.x = postionOLD[0]
+            browserWindowOpts.y = postionOLD[1]
+            browserWindowOpts.width=sizeOLD[0]
+            browserWindowOpts.height=sizeOLD[1]
+            sizeOLDA=sizeOLD;
+            postionOLDA=postionOLD;
+        }
+    } catch (error) {
+      
+    }
 
     mainWindow = new BrowserWindow(browserWindowOpts);
+
+    if ( sizeOLDA && sizeOLDA ){
+        mainWindow.setSize(sizeOLDA[0],sizeOLDA[1])
+        mainWindow.setPosition(postionOLDA[0],postionOLDA[1])
+    }
+
 
     // Load a local HTML file or a remote URL.
     const cdvUrl = cdvElectronSettings.browserWindowInstance.loadURL.url;
@@ -130,6 +155,15 @@ function createWindow () {
     // when you should delete the corresponding element.
         mainWindow = null;
     });
+
+    mainWindow.on("resized", function () {
+           fs.promises.writeFile( path.join(app.getPath('userData') ,"sizeMainWindow.json") , JSON.stringify(mainWindow.getSize()) );
+        
+    });
+    mainWindow.on("moved", function () {
+         fs.promises.writeFile( path.join(app.getPath('userData') ,"positionMainWindow.json") , JSON.stringify(mainWindow.getPosition()) );
+    });
+
 }
 
 function configureProtocol () {
@@ -144,11 +178,10 @@ function configureProtocol () {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
+app.on('ready',async () => {
     if (!isFileProtocol) {
         configureProtocol();
     }
-
     if (devTools && cdvElectronSettings.devToolsExtension) {
         const extensions = cdvElectronSettings.devToolsExtension.map(id => devTools[id] || id);
         devTools.default(extensions) // default = install extension
@@ -214,7 +247,7 @@ app.on('ready', () => {
 
 
 
-    createWindow();
+   await createWindow();
 });
 
 // Quit when all windows are closed.
