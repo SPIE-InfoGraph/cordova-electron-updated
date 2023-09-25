@@ -33,7 +33,7 @@ const {
 dns.setDefaultResultOrder('verbatim');
 // Electron settings from .json file.
 global.cdvElectronSettings = require('./cdv-electron-settings.json');
-
+process.env.NODE_TLS_REJECT_UNAUTHORIZED=0
 const reservedScheme = require('./cdv-reserved-scheme.json');
 
 const devTools = cdvElectronSettings.browserWindow.webPreferences.devTools
