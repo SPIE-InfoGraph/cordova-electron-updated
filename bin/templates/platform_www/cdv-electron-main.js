@@ -262,6 +262,10 @@ app.on('window-all-closed', () => {
 app.on('browser-window-created', (e, win) => {
     win.setMenuBarVisibility(false)
     win.setIcon(appIcon);
+    if(mainWindow && win!=mainWindow){
+        const position = mainWindow.getPosition();
+        win.setPosition(parseInt(position[0]+100) ,parseInt( position[1]+100))
+    }
 });
 
 app.on('activate', () => {
