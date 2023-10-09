@@ -1,6 +1,6 @@
 {
   "name": "cordova-electron",
-  "version": "4.1.7-dev",
+  "version": "4.2.0-dev",
   "description": "electron apps as a target for cordova developers",
   "main": "lib/Api.js",
   "repository": "github:apache/cordova-electron",
@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "cordova-common": "^4.0.2",
-    "electron": "^19.0.3",
-    "electron-builder": "^23.0.3",
+    "electron": "^26.3.0",
+    "electron-builder": "^24.6.4",
     "electron-devtools-installer": "^3.2.0",
     "execa": "^5.1.1",
     "fs-extra": "^10.1.0"
