@@ -19,6 +19,23 @@
 
 ## Release Notes for Cordova Electron
 
+### 4.0.0 (Mar 05, 2024)
+
+This release requires the environment to have **Node.js** `18.0.0` or higher. It is recommended to use the current LTS, which is `20.11.1` at the time of this release.
+
+Project Dependencies:
+
+* `cordova-common@^5.0.0`
+* `electron@^29.2.0`
+* `electron-builder@^24.12.0`
+* `electron-devtools-installer@^3.2.0`
+* `execa@^5.1.1`
+* `fs-extra@^11.2.0`
+
+Electron App Stack:
+
+* [Electron](https://www.electronjs.org/blog/electron-29-2) 29.2.0
+
 ### 3.1.0 (May 25, 2022)
 
 **Features:**
