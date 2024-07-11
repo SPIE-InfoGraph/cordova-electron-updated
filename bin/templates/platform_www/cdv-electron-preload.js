@@ -28,11 +28,13 @@ contextBridge.exposeInMainWorld('_cdvElectronIpc', {
                 error
             );
     },
-    executeJavaScriptToWindow: async (code,index) => {
-        return ipcRenderer.invoke('executeJavaScript',code,index)
-    },
-
     hasService: (serviceName) => cordova &&
     cordova.services &&
     cordova.services[serviceName]
+});
+
+contextBridge.exposeInMainWorld('electron', {
+    executeJavaScriptToWindow: async (code, index) => {
+        return ipcRenderer.invoke('executeJavaScript', code, index);
+    }
 });
