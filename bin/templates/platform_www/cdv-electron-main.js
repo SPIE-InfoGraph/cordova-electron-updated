@@ -292,5 +292,13 @@ ipcMain.handle('cdv-plugin-exec', async (_, serviceName, action, ...args) => {
     }
 });
 
+ipcMain.handle('executeJavaScript', async (_,code,index) => {
+    const wins = BrowserWindow.getAllWindows()
+    if(!index){
+        index= 0;
+    }
+  return wins[index]?.webContents?.executeJavaScript(code)
+});
+
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
